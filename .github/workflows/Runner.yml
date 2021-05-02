@@ -1,0 +1,109 @@
+name: thenaim.com
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  Runner:
+    name: 'Runner'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+
+    # Checkout the repository to the GitHub Actions runner
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v2
+      with:
+        submodules: true  # Fetch Hugo themes
+        fetch-depth: 0    # Fetch all history for .GitInfo and .Lastmod
+
+    # Configure AWS credentials and region
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: eu-central-1
+
+    # Install the latest version of Terraform CLI and configure the Terraform CLI configuration file with a Terraform Cloud user API token
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v1.2.1
+      with:
+        cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+    # Initialize a new or existing Terraform working directory by creating initial files, loading any remote state, downloading modules, etc.
+    - name: Terraform Init
+      working-directory: terraform
+      run: terraform init
+
+    # Checks that all Terraform configuration files adhere to a canonical format
+    - name: Terraform Format
+      working-directory: terraform
+      run: terraform fmt -check
+
+    # Terraform validate
+    - name: Terraform Validate
+      working-directory: terraform
+      run: terraform validate
+
+    # Terraform plan
+    - name: Terraform Plan
+      working-directory: terraform
+      run: terraform plan -no-color
+      env:
+        TF_VAR_domain : ${{ secrets.TF_DOMAIN }}
+        TF_VAR_cloudflare_email : ${{ secrets.TF_CLOUDFLARE_EMAIL }}
+        TF_VAR_cloudflare_api_token : ${{ secrets.TF_CLOUDFLARE_API_TOKEN }}
+
+    # Terraform Apply
+    - name: Terraform Apply
+      working-directory: terraform
+      run: terraform apply -input=false -auto-approve
+      env:
+        TF_VAR_domain : ${{ secrets.TF_DOMAIN }}
+        TF_VAR_cloudflare_email : ${{ secrets.TF_CLOUDFLARE_EMAIL }}
+        TF_VAR_cloudflare_api_token : ${{ secrets.TF_CLOUDFLARE_API_TOKEN }}    
+
+    # Sets up the latest version of Hugo
+    - name: Setup Hugo
+      uses: peaceiris/actions-hugo@v2
+      with:
+        hugo-version: 'latest'
+          
+    # Clean and don't fail
+    - name: Clean public directory
+      run: rm -rf public
+      
+    # Builds the site using the latest version of Hugo
+    - name: Hugo build
+      run: hugo --theme=northendlab-hugo
+    
+    # Configure AWS credentials and region
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.DOSHARE_AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.DOSHARE_AWS_SECRET_ACCESS_KEY }}
+        aws-region: eu-central-1
+        
+    # Copy website to S3 with the AWS CLI
+    - name: Copy website to S3
+      run: |
+        aws s3 sync public/ s3://thenaim.com \
+            --exclude '.git/*' \
+            --exclude '.gitignore' \
+            --exclude '.gitmodules' \
+            --exclude '.DS_Store' \
+            --exclude 'deploy.sh' \
+            --exclude 'terraform'
+  

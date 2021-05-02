@@ -1,0 +1,3 @@
+domain               = "domain"
+cloudflare_email     = "email"
+cloudflare_api_token = "token"

@@ -1,0 +1,12 @@
+[submodule "themes/northendlab-hugo"]	
+	path = themes/northendlab-hugo	
+	url = https://github.com/gethugothemes/northendlab-hugo.git
+[submodule "themes/hugo-theme-tokiwa"]
+	path = themes/hugo-theme-tokiwa
+	url = https://github.com/heyeshuang/hugo-theme-tokiwa.git
+[submodule "themes/dimension"]
+	path = themes/dimension
+	url = https://github.com/your-identity/hugo-theme-dimension.git
+[submodule "themes/potato-dark"]
+	path = themes/potato-dark
+	url = https://github.com/surajmandalcell/potato-dark
